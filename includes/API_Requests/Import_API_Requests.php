@@ -297,7 +297,7 @@ class Import_API_Requests extends Common_API_Requests {
 
 
 						/*************************************************** */
-					if(0){
+					if( 'yes' === get_option( 'skyweb_wc_iiko_make_virtual_pizza_by_size' ) ){
 						//ВИРТУАЛЬНЫЕ ВАРИАЦИИ  30 и 40 см
 
 						//Правим кривой размер в имени товара
@@ -396,25 +396,25 @@ class Import_API_Requests extends Common_API_Requests {
 								// 	update_post_meta( $product_id, '_stock_status', 'instock'); 
 								// 	update_post_meta( $variation_id, '_stock_status', 'instock'); 
 
-								 	update_post_meta( $variation_id, 'parent_origin_product_id', $imported_product); 
+								update_post_meta( $variation_id, 'parent_origin_product_id', $imported_product); 
 								// 	update_post_meta( $variation_id, '_sku', $imported_product['post_id']);				
 								// }
 
-							}		
+							}
 						}
 					}
 
-// 						print_r($imported_product);
-// 						echo '___';
-// 						print_r($product_id);	
-// 						echo '___';
-
-// 						print_r($constructor_data);
-// exit;
+//print_r($imported_product);
+//echo '___';
+//print_r($product_id);	
+//echo '___';
+//print_r($constructor_data);
+//exit;
 
 // echo $post.'__';
 // if($post == 31367)
 // exit;
+
 						/* цепляем конструктор к товару */
 						$constructor_to_product_id = !empty($product_id) ? $product_id : $imported_product;
 						// //открепляем конструктор 
