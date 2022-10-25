@@ -278,6 +278,19 @@ class Import {
 		if ( true === $product_is_deleted ) {
 			$skyweb_wc_iiko_logs->add_error( "Product '$product_name' is deleted in iiko." );
 
+			//Если товар на удалении, отвязываем его от склада
+			$args = array(
+				'meta_key' => 'skyweb_wc_iiko_product_id',
+				'meta_value' => $product_iiko_id,
+				'post_type' => 'product',
+				'post_status' => 'any',
+				'posts_per_page' => -1
+			);
+			$search_posts = get_posts($args)[0];
+			if(!empty($search_posts->ID))
+				wp_remove_object_terms( $search_posts->ID, $stock[0]->term_id, 'location' );
+
+
 			return false;
 		}
 
@@ -1106,18 +1119,20 @@ class Import {
 		}
 	}
 
-	public function product_to_stock( $productId, $stoks_terms, $price=0 ) {
+	public function product_to_stock( $productId, $stoks_terms,  $price=0 ) {
 
 		$count = 99;
 		 /* Отвязываем */
-		foreach($stoks_terms as $st){
-			wp_remove_object_terms( $productId, $st->term_id, 'location' );
-			delete_post_meta($productId, '_stock_at_' . $st->term_id);
-			delete_post_meta($productId, '_stock_status-' . $st->term_id);
-			//delete_post_meta($productId, '	_stock_location_price_' . $st->term_id);
+		// foreach($stoks_terms as $st){  	
+			
+		// 	echo '___p'. $productId.'---t'.$st->term_id.'___';
+		// 	wp_remove_object_terms( $productId, $st->term_id, 'location' );
+		// 	delete_post_meta($productId, '_stock_at_' . $st->term_id);
+		// 	delete_post_meta($productId, '_stock_status-' . $st->term_id);
+		// 	delete_post_meta($productId, '_stock_location_price_' . $st->term_id);
 			
 
-		}
+		// }
 
 		/* Сновы привязываем */
 		$terms = [];
@@ -1134,11 +1149,12 @@ class Import {
 			// 		$price = $terminalsPrices[$term_search_index]['price'];
 			// 	}
 			// }
-			//update_post_meta($productId, '_stock_location_price_' . intval($st->term_id), $price);
+			update_post_meta($productId, '_stock_location_price_' . intval($st->term_id), $price);
 		   
 		}
 		if(count($terms)){
-			wp_set_object_terms( $productId, $terms, 'location' );
+			//wp_set_object_terms( $productId, $terms, 'location' );
+			wp_add_object_terms( $productId, $terms, 'location' );
 		}
 
 		return false;

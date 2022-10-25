@@ -33,7 +33,7 @@ class Notices {
 
 			Logs::add_wc_error_log( $error_subject, 'create-delivery-response' );
 			self::send_notice_to_admin_email( $error_subject, $error_message );
-			//$order->update_status( 'failed', esc_html__( 'Iiko transfer error.', 'skyweb-wc-iiko' ) );
+			$order->update_status( 'failed', esc_html__( 'Iiko transfer error.', 'skyweb-wc-iiko' ) );
 
 			return;
 		}
@@ -44,7 +44,7 @@ class Notices {
 
 			Logs::add_wc_error_log( $error_subject, 'create-delivery-response' );
 			self::send_notice_to_admin_email( $error_subject, $error_message );
-			//$order->update_status( 'failed', esc_html__( 'Iiko delivery creation response is empty.', 'skyweb-wc-iiko' ) );
+			$order->update_status( 'failed', esc_html__( 'Iiko delivery creation response is empty.', 'skyweb-wc-iiko' ) );
 
 			return;
 		}
