@@ -156,22 +156,35 @@ class Export {
 
 	   if (
 		   current_user_can( 'edit_shop_orders' )
-		   && check_admin_referer( 'skyweb-wc-iiko-check-created-delivery' )
+		 //  && check_admin_referer( 'skyweb-wc-iiko-check-created-delivery' )
 		   && isset( $_GET['order_id'] )
 	   ) {
 
 		   $order_id      = absint( wp_unslash( $_GET['order_id'] ) );
-		   $iiko_order_id = $this->get_iiko_order_id( $order_id );
+		 	$iiko_order_id = $this->get_iiko_order_id( $order_id );
 
-		   if ( ! empty( $iiko_order_id ) ) {
+		   if ( !empty($iiko_order_id) ) {
 			   $export_api_requests = new Export_API_Requests();
 			   $retrieved_order     = $export_api_requests->retrieve_order_by_id( $iiko_order_id );
 
-			   $this->print_response( $retrieved_order );
+				$retrieved_order['result'] = !empty($retrieved_order['responce_body']['orders']) ? 'Заказ доставлен в iiko' : 'Ошибка при доставке заказа';
+				if(empty($retrieved_order['responce_body']['orders'])) $retrieved_order['error'] = true;
+
+				update_post_meta( $order_id, '_iiko_order_check', 1 );
+				update_post_meta( $order_id, '_iiko_order_check_results', $retrieved_order );
+
+
+				echo json_encode($retrieved_order);
 
 		   } else {
+
+				update_post_meta( $order_id, '_iiko_order_check', 0 );
+				update_post_meta( $order_id, '_iiko_order_check_results', [] );
+
 			   Logs::add_wc_error_log( "Order $order_id doesn't have iiko ID.", 'check-delivery' );
-			   echo "Order $order_id doesn't have iiko ID.";
+			  // echo "Order $order_id doesn't have iiko ID.";
+				echo json_encode(['error' =>  "Order $order_id doesn't have iiko ID."]);
+
 		   }
 
 	   } else {
@@ -195,7 +208,7 @@ class Export {
 	   }
 	   
 
-	   $iiko_order_id = $order->get_meta('iiko_id');
+	   $iiko_order_id = trim($order->get_meta('iiko_id'));
 	   
 	   if(empty($iiko_order_id)){
 		   $iiko_order_id = $this->get_iiko_order_id( $order_id );
@@ -224,11 +237,12 @@ class Export {
 
 				   
 	   $delivery      = new Delivery( $order_id, $iiko_order_id );
- //print_r($delivery );
+		// print_r( $delivery );
+		// exit;
 	   $order->add_order_note( 'Iiko order ID: ' . $delivery->get_id() );
 
 	   $export_api_requests = new Export_API_Requests();
-	   $created_delivery    = $export_api_requests->create_delivery( $delivery, $organization_id, $terminal_id );
+	   $created_delivery    = $export_api_requests->create_delivery( $delivery, null, $terminal_id );
 
 	   debug_to_file('iiko create-delivery-request__order_id='.$order_id);
 	   debug_to_file( print_R($created_delivery, true) );		
@@ -322,83 +336,6 @@ class Export {
 
 	}
 
-
-	/*Обновление статуса заказа*/
-	public function delivery_order_update($order_iiko_id, $new_status) {
-		if(!empty($_GET['debug'])) echo "delivery_order_update $order_iiko_id, $new_status ";
-	   echo $new_status.'___';
-	   echo $wc_order_status = $this->prepare_order_status($new_status);
-	   /*Ищем id поста по id  заказа в iiko*/
-	   global $wpdb ;
-	   $table = $wpdb->prefix . "postmeta" ;
-	   $wc_order_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM `wp_postmeta` WHERE `meta_key` = 'iiko_id' AND meta_value = '%s'", $order_iiko_id)  );
-	   if(!empty($wc_order_id) && !empty($wc_order_status)){
-		   echo 222;
-		   //do_action('iiko_update_order_status', $wc_order_id, $wc_order_status);
-		   $order = new \WC_Order($wc_order_id);
-		   $order->update_status($wc_order_status, 'Изменение статуса из IIKO.');
-	   }
-
-	   //$order_ids = array_column( $result, null, 'meta_value' );
-   }
-   
-   protected function prepare_order_status( $iiko_order_status ) {
-	   $wc_status = '';
-	   switch($iiko_order_status){
-		   case "Unconfirmed":
-			   $wc_status = 'wc-pending';
-		   break;
-		   case "CookingStarted":
-			   $wc_status = 'wc-making';
-		   break;			
-		   case "WaitCooking":
-			   $wc_status = 'wc-making';
-		   break;		
-		   case "Waiting":
-			   $wc_status = 'wc-on-hold';
-		   break;		
-		   case "CookingCompleted":
-			   $wc_status = 'wc-done';
-		   break;	
-		   case "OnWay":
-			   $wc_status = 'wc-kurier';
-		   break;	
-		   case "Delivered":
-			   $wc_status = 'wc-completed';
-		   break;
-		   case "Closed":
-			   $wc_status = 'wc-completed';
-		   break;			
-		   case "Cancelled":
-			   $wc_status = 'wc-cancelled';
-		   break;	
-		   
-	   }
-	   //"Unconfirmed" "WaitCooking" "ReadyForCooking" "CookingStarted" "CookingCompleted" "Waiting" "OnWay" "Delivered" "Closed" "Cancelled"
-
-	   return $wc_status;
-   }
-
-	public function check_order_status() {
-		//echo $order_id = $_GET['order_id'];
-		$order = wc_get_order( absint( $order_id ) );
-		$order_iiko_id = get_post_meta($order_id, 'iiko_id', true);
-		//$delivery_id = 'faec2639-ffd6-45b0-ac85-8e7fd0abd944';
-		$delivery_id = $order_iiko_id;
-		
-		//Получаем терминал из склада
-		$stock_id = get_post_meta( $order_id, 'stock_id', true );
-		$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
-		$organization_id =  get_term_meta($stock_id, 'organization_code', true) ?: null;
-
-		$export_api_requests = new Export_API_Requests();
-		$res = $export_api_requests->check_delivery($delivery_id, $organization_id);
-
-		print_r($res['orders']);
-	}
-
-
-
 	public function send_test_order() {
 
 		$order_id = $_GET['order_id'];
@@ -410,61 +347,172 @@ class Export {
 		ini_set('display_errors', 'Off'); //отключение ошибок на фронте
 		ini_set('log_errors', 'On'); //запись ошибок в логи
 	
-		$iiko_order_id = $order->get_meta('iiko_id');
-		//echo   ' $iiko_order_id='. $iiko_order_id.'__';
-
-		$stock_id = get_post_meta($order_id, 'stock_id', true);
-
-		// if($stock_id == 119){ // островцы  119
-		// 	 //$organization_id = '7434328a-76a9-42d3-9d0b-56d4361c22b4';
-		// 	 $terminal_id = '1b715844-76e6-4504-82b6-782dd9f23665' ;	
-		// }else{// раменское 110
-		// 	 //$organization_id = '8dca9f20-6a0c-4390-b258-4ebdda026b4e';
-		// 	 $terminal_id = 'a8db1666-836e-5d4f-016d-44b58c4700cd' ;
+		   $iiko_order_id = $order->get_meta('iiko_id');
+			//echo   ' $iiko_order_id='. $iiko_order_id.'__';
 	
-		// }
+			$stock_id = get_post_meta($order_id, 'stock_id', true);
+			/*
+			Островцы - 1b715844-76e6-4504-82b6-782dd9f23665
 
-		//Получаем терминал из склада
-		$stock_id = get_post_meta( $order_id, 'stock_id', true );
-		$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
-		$organization_id =  get_term_meta($stock_id, 'organization_code', true) ?: null;
-		echo	'___'.$terminal_id . '___'.$organization_id.'-';
+			Раменское - a8db1666-836e-5d4f-016d-44b58c4700cd
+			*/
+			// if($stock_id == 119){ // островцы  119
+			// 	 //$organization_id = '7434328a-76a9-42d3-9d0b-56d4361c22b4';
+			// 	 $terminal_id = '1b715844-76e6-4504-82b6-782dd9f23665' ;	
+			// }else{// раменское 110
+			// 	 //$organization_id = '8dca9f20-6a0c-4390-b258-4ebdda026b4e';
+			// 	 $terminal_id = 'a8db1666-836e-5d4f-016d-44b58c4700cd' ;
+	 
+			// }
 
-		// echo	$stock_id.'|';
-		// echo	$terminal_id.'|';
-		// exit;
+			//Получаем терминал из склада
+			$stock_id = get_post_meta( $order_id, 'stock_id', true );
+			$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
 
-// /		   if(empty($iiko_order_id))
-// 		   {
-// 			   $iiko_order_id = $this->get_iiko_order_id( $order_id );
-// 			   update_post_meta($order_id, 'iiko_id', $this->get_iiko_order_id( $order_id ));
-// 		   }
 
-		    $delivery = new Delivery( $order_id, $iiko_order_id );
-			//echo ' $delivery=';
-			//print_R( $delivery);
+			// 			echo	$stock_id.'|';
+			// 			echo	$terminal_id.'|';
 
-			//https://api-ru.iiko.services/api/1/delivery_restrictions/allowed
-			$export_api_requests = new Export_API_Requests();
-			//$c_delivery    = $export_api_requests->delivery_restrictions( $delivery, $organization_id, $terminal_id );
-			//print_R( $c_delivery);
+			// exit;
 
+			if(empty($iiko_order_id))
+			{
+				$iiko_order_id = $this->get_iiko_order_id( $order_id );
+				update_post_meta($order_id, 'iiko_id', $this->get_iiko_order_id( $order_id ));
+				update_post_meta($order_id, 'iiko_id', $this->get_iiko_order_id( $order_id ));
+			}
+		   
+			$delivery      = new Delivery( $order_id, $iiko_order_id );
+			echo ' $delivery=';
+	// print_R( $delivery);
+	// exit;
 			//   $order->add_order_note( 'Iiko order ID: ' . $delivery->get_id() );
 	
-
-		   $created_delivery    = $export_api_requests->create_delivery( $delivery, $organization_id, $terminal_id );
-		   echo $created_delivery;
-
+		   $export_api_requests = new Export_API_Requests();
+		   $created_delivery    = $export_api_requests->create_delivery( $delivery, null, $terminal_id );
+		   echo '_______ $created_delivery';
 		   print_r($created_delivery);
-		 	//$created_delivery['orderInfo']['id'] = 'b03375c5-03b0-425d-8161-dede12256652';
-		//    $check_delivery    = $export_api_requests->check_delivery( $created_delivery['orderInfo']['id'], $organization_id);
-		// 	echo '_______ $check_delivery_______';
-		// 	print_r( $check_delivery);
+		   $check_delivery    = $export_api_requests->check_delivery( $created_delivery['orderInfo']['id'], null);
+			echo '_______ $check_delivery_______';
+			print_r( $check_delivery);
 			 //  Logs::add_wc_debug_log( $created_delivery, 'create-delivery-response' );
-			exit;	
+	
 		   //do_action( 'skyweb_wc_iiko_created_delivery', $created_delivery, $order_id );
 	
 		   return $created_delivery;
-	   }
+	}
+
+	/*Обновление статуса заказа*/
+	public function delivery_order_update($order_iiko_id, $new_status) {
+ 		if(!empty($_GET['debug'])) echo "delivery_order_update $order_iiko_id, $new_status ";
+		//echo $new_status.'___';
+		$wc_order_status = $this->prepare_order_status($new_status);
+		/*Ищем id поста по id  заказа в iiko*/
+		global $wpdb ;
+		$table = $wpdb->prefix . "postmeta" ;
+		$wc_order_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM `wp_postmeta` WHERE `meta_key` = 'iiko_id' AND meta_value = '%s'", $order_iiko_id)  );
+		if(!empty($wc_order_id) && !empty($wc_order_status)){
+			//echo 222;
+			//do_action('iiko_update_order_status', $wc_order_id, $wc_order_status);
+			$order = new \WC_Order($wc_order_id);
+			if($wc_order_status)
+				$order->update_status($wc_order_status, 'Изменение статуса из IIKO.');
+		}
+
+		//$order_ids = array_column( $result, null, 'meta_value' );
+	}
+	
+	protected function prepare_order_status( $iiko_order_status ) {
+		$wc_status = '';
+		switch($iiko_order_status){
+			case "Unconfirmed":
+				$wc_status = 'wc-pending';
+			break;
+			case "CookingStarted":
+				$wc_status = 'wc-making';
+			break;			
+			case "WaitCooking":
+				$wc_status = '';
+			break;		
+			case "Waiting":
+				$wc_status = 'wc-on-hold';
+			break;		
+			case "CookingCompleted":
+				$wc_status = 'wc-done';
+			break;	
+			case "OnWay":
+				$wc_status = 'wc-kurier';
+			break;	
+			case "Delivered":
+				$wc_status = 'wc-completed';
+			break;
+			case "Closed":
+				$wc_status = 'wc-completed';
+			break;			
+			case "Cancelled":
+				$wc_status = 'wc-cancelled';
+			break;	
+			
+		}
+		//"Unconfirmed" "WaitCooking" "ReadyForCooking" "CookingStarted" "CookingCompleted" "Waiting" "OnWay" "Delivered" "Closed" "Cancelled"
+
+		return $wc_status;
+	}
+	public function check_order_status() {
+			$order_id = $_GET['order_id'];
+		$order = wc_get_order( absint( $order_id ) );
+		$order_iiko_id = get_post_meta($order_id, 'iiko_id', true);
+		//Получаем терминал из склада
+		$stock_id = get_post_meta( $order_id, 'stock_id', true );
+		$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
+		$organization_id = 'a2d17b3b-9395-48f7-ad0a-e4db339ab01a';// get_term_meta($stock_id, 'organization_code', true) ?: null;
+		echo '___'.$order_iiko_id .'__'. $organization_id.'_';
+		if($order_iiko_id && $organization_id){
+			echo 4444;
+				$export_api_requests = new Export_API_Requests();
+				$res = $export_api_requests->check_delivery($order_iiko_id, $organization_id);
+				print_r($res);
+		}
+
+			
+	}
+
+
+	public function tt2() {
+
+		$args = array(
+			'status' => ['wc-processing'],				// новый заказы
+			//'date_created' => '<' . ( time() - 3600 ), // за последний час
+		);
+
+		$orders = wc_get_orders($args);
+		foreach ($orders as $item) {
+
+			$order_id = $item->get_id();
+			$iiko_order_check = get_post_meta( $order_id, '_iiko_order_check', true );
+	
+			if($iiko_order_check == ''){
+				//echo 	$order_id.'||';	
+				//$iiko_order_check_data = get_post_meta( $order_id, '_iiko_order_check_results', true );
+				$iiko_order_id = get_post_meta( $order_id, 'iiko_id', true );
+				if ( ! empty( $iiko_order_id ) ) {
+					$export_api_requests = new Export_API_Requests();
+					$retrieved_order     = $export_api_requests->retrieve_order_by_id( $iiko_order_id );
+					
+					$retrieved_order['result'] = !empty($retrieved_order['responce_body']['orders']) ? 'Заказ доставлен в iiko' : 'Ошибка при доставке заказа';
+					if(empty($retrieved_order['responce_body']['orders'])) $retrieved_order['error'] = true;
+	
+					update_post_meta( $order_id, '_iiko_order_check', 1 );
+					update_post_meta( $order_id, '_iiko_order_check_results', $retrieved_order );
+	
+					
+				}else update_post_meta( $order_id, '_iiko_order_check', 0 );
+			}else{
+				
+			}
+		}
+
+
+	}
 
 }

@@ -52,7 +52,7 @@ class Import {
 			$acf_template['supplements_'.$i.'_title'] = $modifier['title'];
 			$acf_template['_supplements_'.$i.'_title'] = $acf_template['supplements_data']['_title'];
 	
-			$acf_template['supplements_'.$i.'_type'] =  ($modifier['maxAmount']==1) ? 'radio' : $acf_template['supplements_data']['type'];
+			$acf_template['supplements_'.$i.'_type'] = $modifier['required'] == 1 ? 'radio' : 'checkbox';//$acf_template['supplements_data']['type'];
 			$acf_template['_supplements_'.$i.'_type'] = $acf_template['supplements_data']['_type'];
 
 			$acf_template['supplements_'.$i.'_show_title'] = $acf_template['supplements_data']['show_title'];
@@ -138,7 +138,6 @@ class Import {
 
 		// Skip deleted group.
 		if ( true === $product_cat_is_deleted ) {
-			
 			$skyweb_wc_iiko_logs->add_error( "Product category '$product_cat_name' is deleted in iiko." );
 
 			return false;
@@ -313,7 +312,7 @@ class Import {
 		$post = $search_posts ? $search_posts->ID : 0;
 		// Update the product if it exists.
 		if ( $post !== 0 ) {
-
+			$is_new_product = false;
 			$post_id = absint( $post );
 
 			$updated_product = wp_update_post( array(
@@ -336,7 +335,7 @@ class Import {
 
 			// Create the product if it doesn't exist.
 		} else {
-
+			$is_new_product = true;
 			$inserted_product = wp_insert_post( array(
 				'post_title'   => $product_name,
 				'post_content' => $product_desc,
@@ -365,7 +364,8 @@ class Import {
 		if ( false !== $product_process_result ) {
 
 			// Relate the product to the product categories.
-			self::relate_product_to_cat( $post_id, $terms, $product_name );
+			if($is_new_product)
+				self::relate_product_to_cat( $post_id, $terms, $product_name );
 
 			// Insert/update product iiko ID.
 			self::insert_update_iiko_id( $post_id, $product_iiko_id, 'product' );

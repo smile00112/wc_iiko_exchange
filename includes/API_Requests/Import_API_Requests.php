@@ -105,29 +105,17 @@ class Import_API_Requests extends Common_API_Requests {
 
 		// Find related to the group products and added it to WooCommerce.
 //print_R($products_reindexed_iiko_ids);
-		
-		//Получаем склады в зависимости от текущего терминала
-		$terminal_id =  get_option( 'skyweb_wc_iiko_terminal_id' );
-		$stock = get_terms([ 
-			'taxonomy'=> ['location'], 
-			'get' => 'all', 
-			'meta_key' => 'code_for_1c',
-			'meta_value' => $terminal_id
-		]); // , 'meta_value' => $terminal_id пока прикрепляем товар ко всем складам
 
-// echo $this->organization_id;
+		$terminal_id =  get_option( 'skyweb_wc_iiko_terminal_id' );
+		$stock = get_terms([ 'taxonomy'=> ['location'], 'get' => 'all', 'meta_key' => 'code_for_1c']); // , 'meta_value' => $terminal_id пока прикрепляем товар ко всем складам
+
 // //echo json_encode($modifiers);
 // print_r($modifiers);
-// echo '____';
-// print_r($simple_groups);
-// $groups = $this->get_cache( 'skyweb_wc_iiko_groups', 'groups' );
-// print_r($groups);
 // echo 77777;
 // exit;
 //print_R($product_group_iiko_ids);
 
 		foreach ( $processed_groups as $product_cat_term_id => $product_cat_iiko_id ) {
-
 
 			// [ (int) index => (string) 'iiko_product_id', ... ]
 			$product_cat_related_products_ids = array_keys( $product_group_iiko_ids, $product_cat_iiko_id );
@@ -142,12 +130,11 @@ class Import_API_Requests extends Common_API_Requests {
 				// continue;
 // print_R($modifiers);
 // echo 66666666;
-
 				$related_product = $products_reindexed_iiko_ids[ $product_cat_related_product_id ];
-
 // print_R($simple_groups);
 // echo 77777;
 // print_r($related_product);
+
 // echo 1;
 // exit;
 
@@ -159,15 +146,37 @@ class Import_API_Requests extends Common_API_Requests {
 					}
 				}
 
-				//!!!TODO  Очистить привязку товаров категории к складу (отсечь ушедшие) 
-				//wp_remove_object_terms( $productId, $st->term_id, 'location' );
 
 				$imported_product = Import::insert_update_product( $related_product, $product_cat_term_id, $modifiers, $sizes, $simple_groups, $stock );
+						
 				
-				//echo $imported_product.' | ';
+				/*!!! fix меню. Перенесём допы из modifiers в groupModifiers !!!*/
+						foreach($related_product['modifiers'] as $modifier){
+							//$related_product['groupModifiers'][0]['childModifiers'][]=$modifier;
+							$dopGroup_minAmount = $modifier['minAmount'];
+							$dopGroup_maxAmount = $modifier['maxAmount'];
+							$dopGroup_required = $modifier['required'];
+							$dopGroup_id = $modifier['id'];
+							$dopGroup_name = 'Дополнительно';
+
+							if(empty($related_product['groupModifiers'][$dopGroup_id])){
+								$related_product['groupModifiers'][$dopGroup_id]= [
+									'id' => '',
+									'name' => $dopGroup_name,
+									'minAmount' => $dopGroup_minAmount,
+									'maxAmount' => $dopGroup_maxAmount,
+									'required' => $dopGroup_required,
+									'childModifiers' => []
+								];
+							}
+							$related_product['groupModifiers'][$dopGroup_id]['childModifiers'][]=$modifier;
+
+						}
+
+						
 						/* обрабатываем модификаторы (допы) */
 						$product_dops_array = []; 
-						$dops_cat_term_id = $this->modifiers_category_id; //Категория куда будем кидать допы
+						$dops_cat_term_id = 92; //Категория куда будем кидать допы
 
 						//для wok лапши модификаторы в конструктор, а не допы
 						//if(!in_array($product_cat_iiko_id, ['b88c720a-a6b8-49e1-af05-5a27aad1523b', '78227033-a0c3-4bb1-b507-971d627b8580'])){
@@ -220,14 +229,9 @@ class Import_API_Requests extends Common_API_Requests {
 						{
 							$constructor_data = [];
 							foreach($related_product['groupModifiers'] as $modifGroup){
-								// echo 2;
-								// print_r($related_product['groupModifiers']);
-								// print_r($modifGroup);
-								// exit;
 								$group_data = [];
 								$zero_price = false;
 								if(!empty($modifGroup['childModifiers'])){
-									//echo 3;
 									$maxAmount = $modifGroup['maxAmount'] ;
 									$minAmount = $modifGroup['minAmount'] ;
 									$required = $modifGroup['required'] ;
@@ -253,7 +257,7 @@ class Import_API_Requests extends Common_API_Requests {
 									//Проходим по модификаторам товара
 									foreach($modifGroup['childModifiers'] as $mod){
 										$modifier_info = $modifiers[$mod['id']];
-										//echo 3;
+		
 										//создаём товары для них 
 										if(!empty($modifier_info)){
 											// $args = array(
@@ -284,10 +288,12 @@ class Import_API_Requests extends Common_API_Requests {
 									}
 									$constructor_data[]=$group_data;
 									
-								}//else echo 4;
+								}
 							}
 							update_post_meta( $imported_product, 'group_modifiers_data', $constructor_data );
 						}
+
+						//   print_r( $constructor_data);
 
 						//   print_r( $related_product);
 						 
@@ -303,110 +309,108 @@ class Import_API_Requests extends Common_API_Requests {
 						/*************************************************** */
 
 						//ВИРТУАЛЬНЫЕ ВАРИАЦИИ  30 и 40 см
-						if(0){
-							//Правим кривой размер в имени товара
-							$related_product['name'] = str_replace(['30см'], '30 см', $related_product['name']);
-							/* Смотрим на вариативность и создаём вирт. вариативный товар */
-							$virt_prod_size = '';
-							$virt_prod_size_term_id = 0;
-							$product_id = 0;
-							$take_main_product_info = false;
 
-							if (strpos(mb_strtolower($related_product['name']), '30 см') !== false ) {
-								$virt_prod_size = '30 см';
-								$virt_prod_size_term_id = 31;
-								$take_main_product_info = true;
-							}
-							if (strpos(mb_strtolower($related_product['name']), '40 см') !== false ) {
-								$virt_prod_size = '40 см';
-								$virt_prod_size_term_id = 30;
-							}	
+						//Правим кривой размер в имени товара
+						$related_product['name'] = str_replace(['30см'], '30 см', $related_product['name']);
+						/* Смотрим на вариативность и создаём вирт. вариативный товар */
+						$virt_prod_size = '';
+						$virt_prod_size_term_id = 0;
+						$product_id = 0;
+						$take_main_product_info = false;
 
-							if($virt_prod_size){
-								//$counter++;
-								$virtual_product_name = str_replace([' 30 см', ' 30 СМ', ' 40 см', ' 40 СМ', ], '', $related_product['name']);
-								$virtual_product_variation_name = $virtual_product_name . ' - ' . $virt_prod_size; 
-								$args = array(
-									'meta_key' => 'virtual_variative_product',
-									'meta_value' => $virtual_product_name,
-									'post_type' => 'product',
-									'post_status' => 'any',
-									'posts_per_page' => -1
+						if (strpos(mb_strtolower($related_product['name']), '30 см') !== false ) {
+							$virt_prod_size = '30 см';
+							$virt_prod_size_term_id = 31;
+							$take_main_product_info = true;
+						}
+						if (strpos(mb_strtolower($related_product['name']), '40 см') !== false ) {
+							$virt_prod_size = '40 см';
+							$virt_prod_size_term_id = 30;
+						}	
+
+						if($virt_prod_size){
+							//$counter++;
+							$virtual_product_name = str_replace([' 30 см', ' 30 СМ', ' 40 см', ' 40 СМ', ], '', $related_product['name']);
+							$virtual_product_variation_name = $virtual_product_name . ' - ' . $virt_prod_size; 
+							$args = array(
+								'meta_key' => 'virtual_variative_product',
+								'meta_value' => $virtual_product_name,
+								'post_type' => 'product',
+								'post_status' => 'any',
+								'posts_per_page' => -1
+							);
+							$search_posts = get_posts($args)[0];
+							$post = $search_posts ? $search_posts->ID : 0;
+
+							// echo $virtual_product_name;	
+							// echo $post;							
+							// print_R($search_posts);
+							// echo '____';
+							// exit;
+
+							//$post = post_exists( $virtual_product_name, '', '', 'product' );
+
+							//Добавляем основной товар, который сединит в себе два вариативных товара с размерами 
+							$variation_price = $related_product['sizePrices'][0]['price']['currentPrice'];
+							if ( $post !== 0 ) {
+								//update
+								$product_id = $this->import_make_virtual_product(
+									[
+										'product_name' => $virtual_product_name,
+										'price' => $variation_price,
+										'stoks_terms' => $stock,
+										'count' => 999,
+										'post_id' => absint( $post )
+									]
 								);
-								$search_posts = get_posts($args)[0];
-								$post = $search_posts ? $search_posts->ID : 0;
 
-								// echo $virtual_product_name;	
-								// echo $post;							
-								// print_R($search_posts);
-								// echo '____';
-								// exit;
+								$take_main_product_info = false;
+							}else{
+								//insert
+								$product_id = $this->import_make_virtual_product(
+									[
+										'product_name' => $virtual_product_name,
+										'price' => $variation_price,
+										'stoks_terms' => $stock,
+										'count' => 999
+									]
+								);
+							}
 
-								//$post = post_exists( $virtual_product_name, '', '', 'product' );
 
-								//Добавляем основной товар, который сединит в себе два вариативных товара с размерами 
-								$variation_price = $related_product['sizePrices'][0]['price']['currentPrice'];
-								if ( $post !== 0 ) {
-									//update
-									$product_id = $this->import_make_virtual_product(
-										[
-											'product_name' => $virtual_product_name,
-											'price' => $variation_price,
-											'stoks_terms' => $stock,
-											'count' => 999,
-											'post_id' => absint( $post )
-										]
-									);
+							//Добавляем вариацию
+							if($product_id)
+							{
+								// echo 'add__'. $virtual_product_variation_name;
+								$variation_id = add_variation_product_sbis( $product_id , "size", [ '30 см', '40 см' ], [$virt_prod_size_term_id], [ $virt_prod_size ], [ $virt_prod_size => $variation_price ]);
+								//Привязываем вариацию к складам
+								$this->product_to_stock($variation_id, $stock);
 
-									$take_main_product_info = false;
-								}else{
-									//insert
-									$product_id = $this->import_make_virtual_product(
-										[
-											'product_name' => $virtual_product_name,
-											'price' => $variation_price,
-											'stoks_terms' => $stock,
-											'count' => 999
-										]
-									);
+																/* Берём картинку и допы из основного товара (30 см) (при создании товара)*/
+								if($take_main_product_info = true){
+								 	//Картинка
+									$thumb_id = get_post_thumbnail_id( $imported_product );
+									if($thumb_id)
+										set_post_thumbnail( $product_id, $thumb_id );
+
+								 	//Допы
+									update_post_meta( $product_id, '_upsell_ids', $product_dops_array );
 								}
 
 
-								//Добавляем вариацию
-								if($product_id)
-								{
+								// if( $variation_id ){
+								// 	update_post_meta( $variation_id, '_upsell_ids', $product_dops_array );
+								// }
+								// if($variation_id){
+								// 	$this->product_to_stock($variation_id, $stock);
+								// 	update_post_meta( $product_id, '_stock_status', 'instock'); 
+								// 	update_post_meta( $variation_id, '_stock_status', 'instock'); 
 
-									// echo 'add__'. $virtual_product_variation_name;
-									$variation_id = add_variation_product_sbis( $product_id , "size", [ '30 см', '40 см' ], [$virt_prod_size_term_id], [ $virt_prod_size ], [ $virt_prod_size => $variation_price ]);
-									//Привязываем вариацию к складам
-									$this->product_to_stock($variation_id, $stock);
+								 	update_post_meta( $variation_id, 'parent_origin_product_id', $imported_product); 
+								// 	update_post_meta( $variation_id, '_sku', $imported_product['post_id']);				
+								// }
 
-																	/* Берём картинку и допы из основного товара (30 см) (при создании товара)*/
-									if($take_main_product_info = true){
-										//Картинка
-										$thumb_id = get_post_thumbnail_id( $imported_product );
-										if($thumb_id)
-											set_post_thumbnail( $product_id, $thumb_id );
-
-										//Допы
-										update_post_meta( $product_id, '_upsell_ids', $product_dops_array );
-									}
-
-
-									// if( $variation_id ){
-									// 	update_post_meta( $variation_id, '_upsell_ids', $product_dops_array );
-									// }
-									// if($variation_id){
-									// 	$this->product_to_stock($variation_id, $stock);
-									// 	update_post_meta( $product_id, '_stock_status', 'instock'); 
-									// 	update_post_meta( $variation_id, '_stock_status', 'instock'); 
-
-										update_post_meta( $variation_id, 'parent_origin_product_id', $imported_product); 
-									// 	update_post_meta( $variation_id, '_sku', $imported_product['post_id']);				
-									// }
-
-								}		
-							}
+							}		
 						}
 
 // 						print_r($imported_product);
@@ -464,7 +468,7 @@ class Import_API_Requests extends Common_API_Requests {
 		if(empty($data['post_id'])){
 			//echo '_Create___'.$data['product_name'];
 			$post_id = wp_insert_post($post); //Создаем запись
-			wp_set_object_terms($post_id, "simple", 'product_type');
+			//wp_set_object_terms($post_id, "simple", 'product_type');
 			wp_set_object_terms($post_id, $pizza_cat_term_id, 'product_cat'); //Задаем категорию товара
 			$this->product_to_stock($post_id, $data['stoks_terms']);
 		}else{
@@ -558,14 +562,8 @@ class Import_API_Requests extends Common_API_Requests {
 		//$this->import_products( [ 166 => '9a18fd03-ee76-4405-b038-149de863db96'  ] );
 
 		//WOK
-		//$this->import_products( [ 165 => '78227033-a0c3-4bb1-b507-971d627b8580' ] );
+		$this->import_products( [ 165 => '78227033-a0c3-4bb1-b507-971d627b8580' ] );
 
-		//боул
-		//$this->import_products( [ 227 => 'b657eab5-6c94-4d27-991c-2af226505a12' ] );
-
-		//поке
-		$this->import_products( [ 170 => 'af8a960f-e471-48c8-9356-b88554e338c7' ] );
-		
 		//лапша WOK
 		//$this->import_products( [ 165 => '78227033-a0c3-4bb1-b507-971d627b8580' ] );
 

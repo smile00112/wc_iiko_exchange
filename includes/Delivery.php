@@ -102,7 +102,7 @@ class Delivery implements JsonSerializable {
 		// Order items.
 		$this->items = $this->order_items( $order );
 
-		$this->discountsInfo = null; //$this->order_coupons( $order );
+		$this->discountsInfo = $this->order_coupons( $order );
 		
 		// Array of
 		// iikoTransport.PublicApi.Contracts.Deliveries.Request.CreateOrder.CashPayment
@@ -147,23 +147,32 @@ class Delivery implements JsonSerializable {
 	}
 
    
-	protected function get_city_streets($city_name){
+	protected function get_city_streets($city_name = ''){
 		global $wpdb;
 	
-		$streets = [];
-		$wtitlequery = "SELECT * FROM iiko_cities WHERE iiko_city_name = '{$city_name}' " ;
-		$c_results = $wpdb->get_results( $wtitlequery, ARRAY_A ) ;
-	
-	
-		if(!$c_results){
-			$wtitlequery = "SELECT * FROM iiko_cities WHERE iiko_city_name LIKE '%{$city_name}' " ;
+		if(!empty($city_name)){
+			//ищем улицу по городу
+			$streets = [];
+			$wtitlequery = "SELECT * FROM iiko_cities WHERE iiko_city_name = '{$city_name}' " ;
 			$c_results = $wpdb->get_results( $wtitlequery, ARRAY_A ) ;
-			
+		
+			if(!$c_results){
+				$wtitlequery = "SELECT * FROM iiko_cities WHERE iiko_city_name LIKE '%{$city_name}' " ;
+				$c_results = $wpdb->get_results( $wtitlequery, ARRAY_A ) ;
+				
+			}
+			foreach($c_results as $city_res){
+				$wtitlequery = "SELECT * FROM iiko_streets WHERE iiko_city_id = '{$city_res['id']}' " ;
+				$streets[$city_res['iiko_city_name']] = $wpdb->get_results( $wtitlequery, ARRAY_A ) ;
+			}
+
+		}else{
+			//передаём все улицы
+			$wtitlequery = "SELECT * FROM iiko_streets" ;
+			$streets = $wpdb->get_results( $wtitlequery, ARRAY_A ) ;
 		}
-		foreach($c_results as $city_res){
-			$wtitlequery = "SELECT * FROM iiko_streets WHERE iiko_city_id = '{$city_res['id']}' " ;
-			$streets[$city_res['iiko_city_name']] = $wpdb->get_results( $wtitlequery, ARRAY_A ) ;
-		}
+
+
 		return $streets;
 	}	
 
@@ -178,10 +187,10 @@ class Delivery implements JsonSerializable {
 
 		} else {
 
+
 			$lat = get_post_meta( $order_id, 'lat', true );
 			$long = get_post_meta( $order_id, 'long', true );
 
-		
 			// Required.
 			// object
 			// Street.
@@ -198,6 +207,8 @@ class Delivery implements JsonSerializable {
 			} else {
 
 				$street_name = ! empty( $order->get_billing_address_1() ) ? wp_slash( $order->get_billing_address_1() ) : null;
+				$street_name = trim($street_name);
+				$street_name = trim($street_name, ',');
 				$street_parce_data = $this->prepare_order_street($city_name, $street_name);
 				// If user set an arbitrary street (we don't have street ID) use default street.
 				//$default_street = get_option( 'skyweb_wc_iiko_default_street' );
@@ -219,12 +230,16 @@ class Delivery implements JsonSerializable {
 
 			/* Ищем улицу в айке */
 			$street = [];
-			$city_name = str_replace(['рабочий посёлок ', 'посёлок ', 'деревня '], '', $city_name);
+			$city_name = str_replace(['рабочий посёлок ', 'коттеджный посёлок ', 'посёлок ', 'деревня ', 'село '], '', $city_name);
 			$city_streets =  $this->get_city_streets($city_name);
 			$search_street = $street_parce_data['street'];
 			$search_street = trim( str_replace(['переулок', 'улица', 'площадь', ', кв.', 'сквер', 'пер.', 'пеерулок', 'дом'], '', $search_street) );
+			$search_street = trim( str_replace(['садоводческое некоммерческое товарищество', 'садовое некоммерческое товарищество'], 'снт', $search_street) );
+
+
 			if(count($city_streets) == 1){
-				$street = $this->search_street($search_street, array_shift($city_streets));
+				$street = $this->search_street($search_street . ' (' . $city_name.')', array_shift($city_streets));
+//echo 1111;				
 			}elseif(count($city_streets) > 1){
 				//Если совпадение по нескольким городам
 				$search_city = array_reduce($city_streets, function($accumulator, $item) {
@@ -243,9 +258,15 @@ class Delivery implements JsonSerializable {
 				if( $search_city['p'] !== -1 ){
 					$street = $this->search_street($search_street, array_values($city_streets)[$search_city['p']]);
 				};
+//echo 2222;
 
+			}elseif(empty($city_streets)){
+				$all_streets =  $this->get_city_streets();
+//echo 3333;
+				$street = $this->search_street_similar($search_street . ' ' . $city_name, array_values($all_streets));
 			}
-
+// print_r($street);
+// exit;
 			if( !empty($street['iiko_street_id']) ){
 				$address['street'] = array(
 
@@ -287,7 +308,7 @@ class Delivery implements JsonSerializable {
 
 			// string [ 0 .. 10 ] characters Nullable
 			// Floor.
-			$address['floor'] =  get_post_meta( $order_id, 'billing_door_code', true ) ? :  get_post_meta( $order_id, '_billing_company', true );
+			$address['floor'] =  get_post_meta( $order_id, '_billing_floor', true ) ? :  get_post_meta( $order_id, '_billing_company', true );
 
 			// string [ 0 .. 10 ] characters Nullable
 			// Intercom.
@@ -301,17 +322,19 @@ class Delivery implements JsonSerializable {
 
 				// object Nullable
 				// Delivery address coordinates.
+				
 				'coordinates'           => (!$lat || !$long) ? null : array( 'latitude'  => $lat, 'longitude' => $long ),
-				/* 'coordinates'           => array(
-					// Required.
-					// number <double>
-					// Latitude
-					'latitude'  => '',
-					// Required.
-					// number <double>
-					// Longitude
-					'longitude' => '',
-				), */
+
+				// 'coordinates'           => array(
+				// 	// Required.
+				// 	// number <double>
+				// 	// Latitude
+				// 	'latitude'  => '',
+				// 	// Required.
+				// 	// number <double>
+				// 	// Longitude
+				// 	'longitude' => '',
+				// ), 
 
 				// object Nullable
 				// Order delivery address.
@@ -462,6 +485,8 @@ class Delivery implements JsonSerializable {
 				}
 			}
 		}
+		if(empty($coupons)) return null;
+
 		foreach($coupons as $coupon){
 			$discounts[]=[
 				'discountTypeId' => $coupon['discount_iiko_id'] ? : $free_discount_id,
@@ -484,12 +509,14 @@ class Delivery implements JsonSerializable {
 		$order_items = array();
 		$all_dops = [];
 		$all_groups = [];
+		$ids_map = []; // product_id -> cart_item_id
 		if ( empty( $products ) ) {
 			Logs::add_wc_error_log( 'No products in cart.', 'create-delivery' );
 
 			return null;
 		}
-
+// print_r( $products );
+// exit;
 		foreach ( $products as $item_id =>$product_obj ) {
 
 			$size_iiko_id     = null;
@@ -498,6 +525,8 @@ class Delivery implements JsonSerializable {
 			$product      = $product_obj->get_product();
 			$product_id   = $product_obj->get_product_id();
 			$product_id_tmp = $product_id ; //Сохраним product_id для связей, т.к. может поменяться из за вирт. товаров
+
+			$ids_map[$item_id] = $product_id_tmp;
 			// echo'_product=';
 			// echo $product_id ;
 			//echo '_v=';
@@ -508,10 +537,10 @@ class Delivery implements JsonSerializable {
 				$parent_origin_product_id = get_post_meta( $variation_id, 'parent_origin_product_id', true );
 				if(!empty($parent_origin_product_id)){
 					$product_id = $parent_origin_product_id;
-					//echo '_parent_origin_product_id='.$product_id;
+					//echo '_parent_origin_product_id='.$product_id; modifiers_parent
 				}
 			}
-			
+		
 			//echo '_name=';
 			$product_name = $product_obj->get_name();
 			//echo '__';
@@ -524,24 +553,23 @@ class Delivery implements JsonSerializable {
 			$modifiers_parent = wc_get_order_item_meta( $item_id, 'modifiers_parent', true );
 			//echo 'product_id_tmp='.$product_id_tmp.'____';
 			//echo 'modifiers_parent='.$modifiers_parent.'____';
-
-			// if(!empty($modifiers_parent)){
-			// 	$all_dops[$modifiers_parent][$product_id] = array(
-			// 		// Required.
-			// 		'productId'      => $product_iiko_id, // Already sanitized
-			// 		// Required.
-			// 		'amount'         => $product_amount,
-			// 		'productGroupId' => null, // Already sanitized
-			// 	);
-			// 	//Прерываем цикл
+			if(!empty($modifiers_parent)){
+				$all_dops[$modifiers_parent][$product_id] = array(
+					// Required.
+					'productId'      => $product_iiko_id, // Already sanitized
+					// Required.
+					'amount'         => $product_amount,
+					'productGroupId' => null, // Already sanitized
+				);
+				//Прерываем цикл
  
-			// 	continue;
-			// }
+				continue;
+			}
 			
 		
 			/* Группы модификаторов товара*/
-			// $product_groups_data = get_post_meta( $product_id, 'group_modifiers_data', true );
-			// $all_groups[$product_id_tmp]= $product_groups_data;
+			$product_groups_data = get_post_meta( $product_id, 'group_modifiers_data', true );
+			$all_groups[$item_id]= $product_groups_data;
 
 
 			// Exclude products from export without iiko ID.
@@ -584,7 +612,7 @@ class Delivery implements JsonSerializable {
 				*/
 			}
 
-			$order_items[$product_id_tmp] = array(
+			$order_items[$item_id] = array(
 				// Required.
 				// string <uuid>
 				// ID of menu item.
@@ -637,8 +665,25 @@ class Delivery implements JsonSerializable {
 
 			$i ++;
 		}
-		//print_r($all_groups);
 
+		/* Если есть платная доставка, добавляем к заказу товар "доставка" */
+		if($order->get_shipping_total()){
+			$order_items[0] = [
+				'productId'        => 'dc38bfde-ba59-4cf4-847c-3988aee2a05c', // Already sanitized
+				'modifiers'        => null,
+				'price'            => null,
+				'positionId'       => null,
+				'type'             => 'Product',
+				'amount'           => 1,
+				'productSizeId'    => null, // Already sanitized
+				'comboInformation' => null,
+				'comment'          => null,
+			];
+		}
+		// print_r($ids_map);
+ 		// print_r($all_dops);
+ 		// print_r($all_groups);
+		// exit;
 		//совмещаем товары и модификаторы
 		foreach($order_items as $prod_id=>$order_item){
 			if(!empty($all_dops[$prod_id])){
@@ -646,21 +691,37 @@ class Delivery implements JsonSerializable {
 				$groups = $all_groups[$prod_id];
 				// echo $prod_id;
 				// print_R($groups);
+
+				//назначаем модификаторам группы, берём из товара
 				foreach ($all_dops[$prod_id] as $dop_product_id=>$dop){
 					if($groups){
-						foreach($groups as &$gr){
+						foreach($groups as $gr){
 							if(in_array( $dop_product_id, $gr['modifiers'])){
-							//	if( $gr['id'] != 'b3b25328-5f22-4186-b90e-7049d2af81fa' )
-									$dop['productGroupId'] = $gr['id'];
+								//	if( $gr['id'] != 'b3b25328-5f22-4186-b90e-7049d2af81fa' )
+								$dop['productGroupId'] = $gr['id'];
 							}
 						}
 					}
 					$order_items[$prod_id]['modifiers'][]=$dop;
 				}
 				//$order_items[$prod_id]['modifiers']=$all_dops[$prod_id];
+
+				//Если есть допы и количество товара в заказе > 1, разбиваем товар на несколько, а то айка отдаёт ошибку допов (что их не может быть более.., при ограниченном количестве)
+				if($order_items[$prod_id]['amount'] > 1){
+					$prod_amount = $order_items[$prod_id]['amount'];
+					$order_items[$prod_id]['amount'] = 1;
+					foreach($order_items[$prod_id]['modifiers'] as &$_modifier){
+						$_modifier['amount'] = $_modifier['amount'] / $prod_amount;
+					}
+					for($ii = 1; $ii < $prod_amount; $ii++){
+						$order_items[$prod_id.'_'.$ii] = $order_items[$prod_id];
+					}
+				}
 			}
 		}
-		
+		// print_R($order_items);
+		// exit;
+
 		//разделяем товары т.к. айка ругается на модификатор ограниченный колл 1, если товара больше 1 (то и модификатора передаётся больше)
 		
 
@@ -723,7 +784,6 @@ class Delivery implements JsonSerializable {
 			// 	if(!empty($parts_1[array_key_last($parts_1)])){
 			// 		$adress['apart'] = trim(str_replace('кв. ', '', $parts_1[array_key_last($parts_1)] ));
 			// 	};
-			
 			//ищем дом
 			$parts_2 = explode(' ', $parts_1[0]); 
 			$pattern = "/[0-9]+/";
@@ -747,22 +807,62 @@ class Delivery implements JsonSerializable {
 
 	protected function search_street($search_street, $streets){
 		$street = [];
-		// echo $search_street;
-		// print_R($streets);
-		$search_res = array_filter( $streets , function($v) use ( $search_street ){
-			//echo $v['name'] .'__'. $search.'__'.strpos(strtolower($v['name']), strtolower($search)).'<br>';
-			//echo $v['iiko_street_name'].'____'.$search_street.'----';
-			return strpos(strtolower($v['iiko_street_name']), strtolower($search_street)) !== false;
-	   });
+		// $search_res = array_filter( $streets , function($v) use ( $search_street ){
+		// 	//echo $v['name'] .'__'. $search.'__'.strpos(strtolower($v['name']), strtolower($search)).'<br>';
+		// 	//echo $v['iiko_street_name'].'____'.$search_street.'----';
+		// 	return strpos(strtolower($v['iiko_street_name']), strtolower($search_street)) !== false;
+	   	// });
 
-	   //TODO добавить reduce для уточнения поиска, а пока отдавать первый элемент
-		// echo '$search_res='.$search_res;
-	// echo '$search_res=';
-	// print_R($search_res);
-	//    if( count($search_res) > 1 ) {
+		$search_res = array_reduce($streets, function($accumulator, $item) {
+			//print_R($accumulator);
+			$street1 = $accumulator['source_street'];
+			$street2 = $item['iiko_street_name'];
+			$p = -1;
 			
-	// 	}
-		$street = array_shift($search_res);
-		return $street;
+			similar_text( $street1, $street2, $p );
+			
+			//echo $street1.'___'.$street2.'___p='.$p.' | ';
+			if($p > $accumulator['p']){
+				$item['p'] = $p;
+				$item['source_street'] = $accumulator['source_street'];
+				return $item;
+			}
+			return $accumulator;
+		}, ['p' => 0, 'source_street' => $search_street] );
+		
+
+		//$street = array_shift($search_res);
+		return $search_res;
 	}
+
+	protected function search_street_similar($search_street, $streets){
+		$search = [];
+		if($search_street == 'ДНП Ясное') $search_street = 'ДНП Ясное тер';
+		if($search_street == 'снт Исток садовое некоммерческое товарищество Исток') $search_street = 'Исток территория снт';
+
+		// echo '$search_street='.$search_street;
+		// print_R($streets);
+		$search = array_reduce($streets, function($accumulator, $item) {
+			//print_R($accumulator);
+			$street1 = $accumulator['source_street'];
+			$street2 = $item['iiko_street_name'];
+			$p = -1;
+			
+			similar_text( $street1, $street2, $p );
+			
+			//echo $street1.'___'.$street2.'___p='.$p.' | ';
+			if($p > $accumulator['p']){
+				$item['p'] = $p;
+				$item['source_street'] = $accumulator['source_street'];
+				return $item;
+			}
+			return $accumulator;
+		}, ['p' => 0, 'source_street' => $search_street] );
+
+
+	   
+		//$street = array_shift($search_res);
+		return $search;
+	}
+	
 }

@@ -48,9 +48,11 @@ class AJAX_API_Requests extends Import_API_Requests {
 		$this->check_response_for_ajax( $terminals, 'Terminals' );
 
 		if ( is_array( $terminals ) && isset( $terminals['terminalGroups'] ) && ! empty( $terminals['terminalGroups'] ) ) {
+
 			$this->saveTirminals($terminals, $organization_id);
 
 			echo wp_json_encode( $terminals );
+
 		} else {
 			$this->logs->add_error( 'Organization does not have terminals.' );
 			$this->echo_error_logs();

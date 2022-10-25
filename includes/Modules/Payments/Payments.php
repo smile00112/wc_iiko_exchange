@@ -115,7 +115,7 @@ class Payments {
 					array(
 
 						// string
-						'paymentTypeKind'        => strval( $payment_type_kind ),
+						'paymentTypeKind'        => strval( $payment_type_kind ), //CASH
 
 						// Required.
 						// number <double> [ 0 .. 10000000000 ]
