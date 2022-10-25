@@ -106,8 +106,8 @@ class Import_API_Requests extends Common_API_Requests {
 		// Find related to the group products and added it to WooCommerce.
 //print_R($products_reindexed_iiko_ids);
 
-		$terminal_id =  get_option( 'skyweb_wc_iiko_terminal_id' );
-		$stock = get_terms([ 'taxonomy'=> ['location'], 'get' => 'all', 'meta_key' => 'code_for_1c']); // , 'meta_value' => $terminal_id пока прикрепляем товар ко всем складам
+		//$terminal_id =  get_option( 'skyweb_wc_iiko_terminal_id' );
+		$stock = get_terms([ 'taxonomy'=> ['location'], 'get' => 'all', 'meta_key' => 'code_for_1c', 'meta_value' => $this->terminal_id]); // , 'meta_value' => $terminal_id пока прикрепляем товар ко всем складам
 
 // //echo json_encode($modifiers);
 // print_r($modifiers);
@@ -119,6 +119,7 @@ class Import_API_Requests extends Common_API_Requests {
 
 			// [ (int) index => (string) 'iiko_product_id', ... ]
 			$product_cat_related_products_ids = array_keys( $product_group_iiko_ids, $product_cat_iiko_id );
+			$updated_modifiers = [];
 
 			foreach ( $product_cat_related_products_ids as $product_cat_related_product_id ) {
 
@@ -260,28 +261,16 @@ class Import_API_Requests extends Common_API_Requests {
 		
 										//создаём товары для них 
 										if(!empty($modifier_info)){
-											// $args = array(
-											// 	'meta_key' => 'skyweb_wc_iiko_product_id',
-											// 	'meta_value' => $mod['id'],
-											// 	'post_type' => 'product',
-											// 	'post_status' => 'any',
-											// 	'posts_per_page' => -1
-											// );
-											// $search_posts = get_posts($args)[0];
-											//$modifier_obj = post_exists( $modifier_info['name'], '', '', 'product' ); 
-											//$modifier_id = $search_posts ? $search_posts->ID : 0;
-											// if ( $modifier_id !== 0 ) {
-											// 	$modifier_id = absint( $modifier_id );
-											// }else
-											// {
-												if($zero_price)
-													$modifier_info['price'] = 0;
-												$modifier_insert_data = Import::insert_update_product( $modifier_info, $term_id, [], [], [], $stock );
-												$modifier_id = $modifier_insert_data;
-											//}
 
+											$modifier_id = empty($updated_modifiers[$mod['id']] ) 
+												? $this->import_update_modifier($zero_price, $modifier_info, $term_id, $stock) 
+												: $updated_modifiers[$mod['id']];
+											
+
+											
 											//Заносим данные для мета поля основного товара
 											if(!empty($modifier_id)){
+												$updated_modifiers[$mod['id']] = $modifier_id;
 												$group_data['modifiers'][] = $modifier_id;
 											}
 										}
@@ -290,14 +279,15 @@ class Import_API_Requests extends Common_API_Requests {
 									
 								}
 							}
-							update_post_meta( $imported_product, 'group_modifiers_data', $constructor_data );
+
+							//Данные по группам модификаторов заносим в мета поле group_modifiers_data с привязкой к текущему терминалу
+							$group_modifiers_data = [];
+							//$group_modifiers_data = get_post_meta( $imported_product, 'group_modifiers_data', true ) ?: [];
+							$group_modifiers_data[$this->terminal_id] = $constructor_data;
+							update_post_meta( $imported_product, 'group_modifiers_data',  $group_modifiers_data);
 						}
 
 						//   print_r( $constructor_data);
-
-						//   print_r( $related_product);
-						 
-						// print_r( '--'.$imported_product.'--');
 						// //	echo 77777;
 						// print_r($related_product);
 						// echo 2;
@@ -307,7 +297,7 @@ class Import_API_Requests extends Common_API_Requests {
 
 
 						/*************************************************** */
-
+					if(0){
 						//ВИРТУАЛЬНЫЕ ВАРИАЦИИ  30 и 40 см
 
 						//Правим кривой размер в имени товара
@@ -412,6 +402,7 @@ class Import_API_Requests extends Common_API_Requests {
 
 							}		
 						}
+					}
 
 // 						print_r($imported_product);
 // 						echo '___';
@@ -441,6 +432,9 @@ class Import_API_Requests extends Common_API_Requests {
 				}
 			}
 		}
+// echo '$mmm='.$mmm;		
+// echo '$updated_modifiers--';		
+// print_R($updated_modifiers);
 
 		return $processed_products;
 	}
@@ -549,6 +543,15 @@ class Import_API_Requests extends Common_API_Requests {
 		);
 	}
 
+	public function import_update_modifier($zero_price, $modifier_info = array(), $term_id, $stock ) {
+		if($zero_price)
+			$modifier_info['price'] = 0;
+		$modifier_insert_data = Import::insert_update_product( $modifier_info, $term_id, [], [], [], $stock );
+		//$updated_modifiers[$mod['id']] = $modifier_insert_data;
+		$modifier_id = $modifier_insert_data;
+
+		return $modifier_insert_data;
+	}
 
 	public function import_products_all_terminals( ) { 
 
@@ -561,8 +564,9 @@ class Import_API_Requests extends Common_API_Requests {
 		//Пиццы 40 см
 		//$this->import_products( [ 166 => '9a18fd03-ee76-4405-b038-149de863db96'  ] );
 
-		//WOK
-		$this->import_products( [ 165 => '78227033-a0c3-4bb1-b507-971d627b8580' ] );
+
+		//Поке
+		$this->import_products( [ 170 => 'af8a960f-e471-48c8-9356-b88554e338c7' ] );
 
 		//лапша WOK
 		//$this->import_products( [ 165 => '78227033-a0c3-4bb1-b507-971d627b8580' ] );

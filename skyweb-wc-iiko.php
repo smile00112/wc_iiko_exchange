@@ -1,8 +1,4 @@
 <?php
-<<<<<<< HEAD
-=======
-
->>>>>>> main
 /**
  * Plugin Name: iikoCloud for WooCommerce
  * Plugin URI: https://skyweb.team/projects/iiko-cloud-transport/
@@ -111,11 +107,7 @@ SkyWeb\WC_Iiko\Modules\Payments\Payments::init();
 // Module notices.
 SkyWeb\WC_Iiko\Modules\Notices\Notices::init();
 // Module Checkout.
-<<<<<<< HEAD
-SkyWeb\WC_Iiko\Modules\Checkout\Checkout::init();
-=======
 SkyWeb\WC_Iiko\Modules\Checkout\Checkout::init();
 
 //Module Cron
 SkyWeb\WC_Iiko\Modules\Cron\Cron::init();
->>>>>>> main
