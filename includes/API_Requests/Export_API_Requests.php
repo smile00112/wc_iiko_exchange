@@ -10,7 +10,7 @@ use SkyWeb\WC_Iiko\Logs;
 class Export_API_Requests extends Common_API_Requests {
 
 	/**
-	 * Export WooCommerce order to iiko (delivery). 
+	 * Export WooCommerce order to iiko (delivery).
 	 *
 	 * @return boolean|array
 	 */
@@ -39,7 +39,7 @@ class Export_API_Requests extends Common_API_Requests {
 			'Authorization' => $access_token
 		);
 		$body    = array(
-			'organizationId'  => $this->organization_id,
+			'organizationId'  => $organization_id,
 			'terminalGroupId' => $terminal_id,
 			'order'           => $delivery,
 		);
@@ -118,7 +118,7 @@ print_R($body);
 			'organizationId' => $this->organization_id,
 			'orderIds'       => array( $iiko_order_id )
 		);
- 		$responce  = HTTP_Request::remote_post( $url, $headers, $body );
-		return ['request_body' => $body, 'responce_body' => $responce ];
+
+		return HTTP_Request::remote_post( $url, $headers, $body );
 	}
 }

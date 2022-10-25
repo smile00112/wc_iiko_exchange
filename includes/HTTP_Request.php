@@ -46,9 +46,12 @@ class HTTP_Request {
 			'body'        => wp_json_encode( $body ),
 			'data_format' => 'body'
 		);
+		
 		$response = wp_safe_remote_post( $url, $args );
-// echo '$response=';
-// print_R($response);
+
+		// print_r($body);
+		//  echo '______response_______';
+		//  print_r($response);
 		Logs::add_wc_debug_log( $response, 'remote-post' );
 
 		// WP_Error.

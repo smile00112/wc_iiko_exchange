@@ -219,8 +219,9 @@ class Import_API_Requests extends Common_API_Requests {
 						// ];
 
 
+
 						if(!empty($related_product['groupModifiers'])){
-	
+
 						/*Модификаторы в конструктор*/
 
 						//Суём модификаторы в констрруктор только для wok лапши (upd. теперь для всех])
@@ -429,6 +430,7 @@ class Import_API_Requests extends Common_API_Requests {
 						delete_field('supplements', $constructor_to_product_id);
 						if( !empty($constructor_data)){//&& $new_product
 							//если создавался виртуальный товар, цепляем конструктор к нему
+							wp_set_object_terms($constructor_to_product_id, "supplements", 'product_type');
 							$constr_arr = Import::modifiers_to_constructor($constructor_to_product_id, $constructor_data);
 						}
 // echo $constructor_to_product_id;						
@@ -453,7 +455,7 @@ class Import_API_Requests extends Common_API_Requests {
 		]
 		*/
 		//global $wpdb;
-		$pizza_cat_term_id = 136; //Категория куда будем кидать виртуальные (сборные товары)
+		$pizza_cat_term_id = $this->virtual_pizza_category_id; //Категория куда будем кидать виртуальные (сборные товары)
 
 		$post = array(
 			'post_author' => 1,

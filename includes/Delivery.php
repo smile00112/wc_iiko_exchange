@@ -275,12 +275,9 @@ class Delivery implements JsonSerializable {
 					//'name' => $street['iiko_street_name'],
 
 					'city' => $city_name,
-
 				);
 			}
-			// print_r($city_streets);
-			// print_r($street_parce_data);
-			// exit;
+
 			// string [ 0 .. 10 ] characters Nullable
 			// Postcode.
 			$address['index'] = ! empty( $order->get_billing_postcode() ) ? $this->trim_string( wp_slash( $order->get_billing_postcode() ), 10 ) : null;

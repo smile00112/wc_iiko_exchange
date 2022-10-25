@@ -27,6 +27,10 @@ class Common_API_Requests {
 		$this->organization_id = sanitize_key( get_option( 'skyweb_wc_iiko_organization_id' ) );
 		$this->terminal_id     = sanitize_key( get_option( 'skyweb_wc_iiko_terminal_id' ) );
 		$this->city_id         = sanitize_key( get_option( 'skyweb_wc_iiko_city_id' ) );
+
+		$this->modifiers_category_id         = sanitize_key( get_option( 'skyweb_wc_iiko_modifiers_category_id' ) );
+		$this->virtual_pizza_category_id         = sanitize_key( get_option( 'skyweb_wc_iiko_virtual_pizza_category_id' ) );
+
 	}
 
 	/**

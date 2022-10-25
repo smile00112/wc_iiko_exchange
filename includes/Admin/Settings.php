@@ -188,6 +188,24 @@ class Settings extends WC_Settings_Page {
 					),
 
 					array(
+						'title'   => 'id Категори для импорта модификаторов',
+						'desc'    => '',
+						'id'      => 'skyweb_wc_iiko_modifiers_category_id',
+						'type'    => 'text',
+						'default' => '92',
+
+					),
+					array(
+						'title'   => 'id Категори для импорта виртуальных пицц',
+						'desc'    => '',
+						'id'      => 'skyweb_wc_iiko_modifiers_category_id',
+						'type'    => 'text',
+						'default' => '136',
+
+					),
+
+					
+					array(
 						'type' => 'sectionend',
 						'id'   => 'skyweb_wc_iiko_import_options',
 					),

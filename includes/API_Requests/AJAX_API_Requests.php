@@ -48,6 +48,9 @@ class AJAX_API_Requests extends Import_API_Requests {
 		$this->check_response_for_ajax( $terminals, 'Terminals' );
 
 		if ( is_array( $terminals ) && isset( $terminals['terminalGroups'] ) && ! empty( $terminals['terminalGroups'] ) ) {
+
+			$this->saveTirminals($terminals, $organization_id);
+
 			echo wp_json_encode( $terminals );
 
 		} else {
@@ -146,4 +149,82 @@ class AJAX_API_Requests extends Import_API_Requests {
 
 		wp_die();
 	}
+
+	/* 
+		Сохраняем терминал как склад + делаем точку самовывоза
+	*/
+	public function saveTirminals($terminals, $organization_id) {
+
+		foreach($terminals['terminalGroups'] as $terminalGroups){
+			foreach($terminalGroups['items'] as $terminal){
+				$stock_1c_id = $terminal['id'];
+				$stock_name = $terminal['name'];
+				$stock_search = $this->search_stock($stock_1c_id);   //ищем term по id склада
+
+				//$stock_search = get_term_by( 'name', $stock_name, 'location' );
+				if(!$stock_search){
+					/* Добавляем новый склад */
+					$insert_res = wp_insert_term(
+						$stock_name,  // новый термин
+						'location', // таксономия
+						array(
+							'description' => $stock_name,
+							'slug'        => $stock_name,
+							'parent'      => 0,
+						)
+					); 
+					
+					if ( !is_wp_error( $insert_res ) )
+					if($insert_res['term_id']){
+
+						update_term_meta( $insert_res['term_id'], 'code_for_1c', $stock_1c_id );
+						update_term_meta( $insert_res['term_id'], '_code_for_1c', 'field_5ff3baa775b6c' );
+						update_term_meta( $insert_res['term_id'], 'organization_code', $organization_id );
+						update_term_meta( $insert_res['term_id'], '_organization_code', 'field_633d2349bd82f' );
+
+						/* Добавляем новую точку самовывоза */
+						$post_id = wp_insert_post(  wp_slash( array(
+							'post_title'    => sanitize_text_field( $stock_name ),
+							'post_status'   => 'publish',
+							'post_type'     => 'pickuppoint',
+							'post_author'   => 1,
+							'ping_status'   => get_option('default_ping_status'),
+							'post_parent'   => 0,
+							'menu_order'    => 0,
+							'to_ping'       => '',
+							'pinged'        => '',
+							'post_password' => '',
+							'post_excerpt'  => '',
+							'meta_input'    => [ 'pickup_sklad_id'=>$insert_res['term_id'], '_pickup_sklad_id'=>'field_61d46037a6182' ],
+						) ) );
+					
+					}
+					$term_id = $insert_res['term_id'];
+					//print_r($insert_res);
+					//$id = $insert_res['term_id']
+				}
+			}
+		}	
+	}	
+
+    private function search_stock($stock_id){
+
+        $args = array(
+            'hide_empty' => false, // also retrieve terms which are not used yet
+            'meta_query' => array(
+                array(
+                   'key'       => 'code_for_1c',
+                   'value'     =>  $stock_id,
+                   'compare'   => '='
+                )
+            ),
+            'taxonomy'  => 'location',
+            );
+        $terms = get_terms( $args );
+
+        if(!empty($terms))
+            return $terms[0];
+
+        return false;
+    }
 }

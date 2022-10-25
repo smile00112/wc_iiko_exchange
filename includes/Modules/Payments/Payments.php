@@ -88,7 +88,6 @@ class Payments {
 		if ( ! empty( $order_payment_method ) ) {
 
 			$payment_types           = get_option( 'skyweb_wc_iiko_payment_types' );
-			//print_r($payment_types);
 			$is_processed_externally = false;
 
 			if ( ! empty( $payment_types ) ) {

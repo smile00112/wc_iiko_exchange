@@ -35,10 +35,8 @@ class Export {
 		add_action( 'status', array( $this, 'get_status') );
 
 		add_action( 'test_order', array( $this, 'send_test_order') );
-
+		
 		add_action( 'check_order', array( $this, 'check_order_status') );
-			add_action( 'tt2', array( $this, 'tt2') );
-	
 		
 		add_action( 'DeliveryOrderUpdate', array( $this, 'delivery_order_update'), 10, 2 );
 
@@ -220,6 +218,8 @@ class Export {
 	   //Получаем терминал из склада
 	   $stock_id = get_post_meta( $order_id, 'stock_id', true );
 	   $terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
+	   $organization_id =  get_term_meta($stock_id, 'organization_code', true) ?: null;
+
 	   //$stock_id = get_post_meta($order_id, 'stock_id', true);
 	   /*
 	   Островцы - 1b715844-76e6-4504-82b6-782dd9f23665
@@ -256,8 +256,6 @@ class Export {
 		   debug_to_file('_____Сбой передачи заказа в Iiko_____'); 
 		   $order->update_status('failed', 'Сбой передачи заказа в Iiko');
 	   }
-
-
 	   //do_action( 'skyweb_wc_iiko_created_delivery', $created_delivery, $order_id );
 
 	   return $created_delivery;
@@ -325,8 +323,8 @@ class Export {
    /*Получаем хуки*/
    public function get_hooks() {
 
-	$cap = new Common_API_Requests();
-	$data = $cap->get_hooks();
+		$cap = new Common_API_Requests();
+	   $data = $cap->get_hooks();
 	   /* */
    }		
 
