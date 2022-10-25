@@ -276,11 +276,9 @@ class Delivery implements JsonSerializable {
 					'city' => $city_name,
 				);
 			}
-<<<<<<< HEAD
 
-=======
 		}
->>>>>>> misky
+
 			// string [ 0 .. 10 ] characters Nullable
 			// Postcode.
 			$address['index'] = ! empty( $order->get_billing_postcode() ) ? $this->trim_string( wp_slash( $order->get_billing_postcode() ), 10 ) : null;
