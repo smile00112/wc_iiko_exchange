@@ -133,10 +133,10 @@ class Import_API_Requests extends Common_API_Requests {
 				$related_product = $products_reindexed_iiko_ids[ $product_cat_related_product_id ];
 // print_R($simple_groups);
 // echo 77777;
-print_r($related_product);
+// print_r($related_product);
 
-echo 1;
-exit;
+// echo 1;
+// exit;
 
 				foreach($related_product['groupModifiers'] as $gr_mod){
 					foreach($gr_mod['childModifiers'] as $mod){
@@ -559,8 +559,8 @@ exit;
 		//Пиццы 40 см
 		//$this->import_products( [ 166 => '9a18fd03-ee76-4405-b038-149de863db96'  ] );
 
-		//Поке
-		$this->import_products( [ 170 => 'af8a960f-e471-48c8-9356-b88554e338c7' ] );
+		//WOK
+		$this->import_products( [ 165 => '78227033-a0c3-4bb1-b507-971d627b8580' ] );
 
 		//лапша WOK
 		//$this->import_products( [ 165 => '78227033-a0c3-4bb1-b507-971d627b8580' ] );
