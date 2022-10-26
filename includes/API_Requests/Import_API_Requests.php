@@ -281,8 +281,8 @@ class Import_API_Requests extends Common_API_Requests {
 							}
 
 							//Данные по группам модификаторов заносим в мета поле group_modifiers_data с привязкой к текущему терминалу
-							$group_modifiers_data = [];
-							//$group_modifiers_data = get_post_meta( $imported_product, 'group_modifiers_data', true ) ?: [];
+							//$group_modifiers_data = [];
+							$group_modifiers_data = get_post_meta( $imported_product, 'group_modifiers_data', true ) ?: [];
 							$group_modifiers_data[$this->terminal_id] = $constructor_data;
 							update_post_meta( $imported_product, 'group_modifiers_data',  $group_modifiers_data);
 						}

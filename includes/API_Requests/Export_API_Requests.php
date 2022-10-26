@@ -74,7 +74,7 @@ class Export_API_Requests extends Common_API_Requests {
 			'Authorization' => $access_token
 		);
 		$body    = array(
-			'organizationId'  => $this->organization_id,
+			'organizationId'  => $organization_id,
 			'orderIds' => [ $delivery_id ],
 			
 		);
@@ -85,6 +85,7 @@ class Export_API_Requests extends Common_API_Requests {
 		
 echo '$body=';
 print_R($body);
+echo json_encode($body);
 
 		//Logs::add_wc_debug_log( wp_json_encode( $body ), 'create-delivery-body' );
 
@@ -115,10 +116,12 @@ print_R($body);
 			'Authorization' => $access_token
 		);
 		$body    = array(
-			'organizationId' => $this->organization_id,
+			'organizationId' => $organization_id,
 			'orderIds'       => array( $iiko_order_id )
 		);
 
-		return HTTP_Request::remote_post( $url, $headers, $body );
+		$responce  = HTTP_Request::remote_post( $url, $headers, $body );
+		return ['request_body' => $body, 'responce_body' => $responce ];
+		
 	}
 }

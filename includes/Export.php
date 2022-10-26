@@ -160,19 +160,26 @@ class Export {
 		   && isset( $_GET['order_id'] )
 	   ) {
 
-		   $order_id      = absint( wp_unslash( $_GET['order_id'] ) );
+		   	$order_id      = absint( wp_unslash( $_GET['order_id'] ) );
 		 	$iiko_order_id = $this->get_iiko_order_id( $order_id );
+			//Получаем органицацию из склада
+			$stock_id = get_post_meta( $order_id, 'stock_id', true );
+			$organization_id =  get_term_meta($stock_id, 'organization_code', true) ?: null;
+
 
 		   if ( !empty($iiko_order_id) ) {
 			   $export_api_requests = new Export_API_Requests();
-			   $retrieved_order     = $export_api_requests->retrieve_order_by_id( $iiko_order_id );
+			   $retrieved_order     = $export_api_requests->retrieve_order_by_id( $iiko_order_id, $organization_id );
 
 				$retrieved_order['result'] = !empty($retrieved_order['responce_body']['orders']) ? 'Заказ доставлен в iiko' : 'Ошибка при доставке заказа';
 				if(empty($retrieved_order['responce_body']['orders'])) $retrieved_order['error'] = true;
 
-				update_post_meta( $order_id, '_iiko_order_check', 1 );
-				update_post_meta( $order_id, '_iiko_order_check_results', $retrieved_order );
+				if(!empty($retrieved_order['error']))
+					update_post_meta( $order_id, '_iiko_order_check', -1 );
+				else
+					update_post_meta( $order_id, '_iiko_order_check', 1 );
 
+				update_post_meta( $order_id, '_iiko_order_check_results', $retrieved_order );
 
 				echo json_encode($retrieved_order);
 
@@ -241,8 +248,8 @@ class Export {
 		// exit;
 	   $order->add_order_note( 'Iiko order ID: ' . $delivery->get_id() );
 
-	   $export_api_requests = new Export_API_Requests();
-	   $created_delivery    = $export_api_requests->create_delivery( $delivery, null, $terminal_id );
+	//    $export_api_requests = new Export_API_Requests();
+	//    $created_delivery    = $export_api_requests->create_delivery( $delivery, $organization_id, $terminal_id );
 
 	   debug_to_file('iiko create-delivery-request__order_id='.$order_id);
 	   debug_to_file( print_R($created_delivery, true) );		
@@ -368,7 +375,9 @@ class Export {
 			//Получаем терминал из склада
 			$stock_id = get_post_meta( $order_id, 'stock_id', true );
 			$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
-
+			$organization_id =  get_term_meta($stock_id, 'organization_code', true) ?: null;
+			echo		'$terminal_id=' . $terminal_id . '|';
+			echo		'$organization_id=' . $organization_id . '|';
 
 			// 			echo	$stock_id.'|';
 			// 			echo	$terminal_id.'|';
@@ -384,12 +393,12 @@ class Export {
 		   
 			$delivery      = new Delivery( $order_id, $iiko_order_id );
 			echo ' $delivery=';
-	// print_R( $delivery);
-	// exit;
+print_R( $delivery);
+//exit;
 			//   $order->add_order_note( 'Iiko order ID: ' . $delivery->get_id() );
 	
 		   $export_api_requests = new Export_API_Requests();
-		   $created_delivery    = $export_api_requests->create_delivery( $delivery, null, $terminal_id );
+		   $created_delivery    = $export_api_requests->create_delivery( $delivery, $organization_id, $terminal_id );
 		   echo '_______ $created_delivery';
 		   print_r($created_delivery);
 		   $check_delivery    = $export_api_requests->check_delivery( $created_delivery['orderInfo']['id'], null);
@@ -459,16 +468,16 @@ class Export {
 		return $wc_status;
 	}
 	public function check_order_status() {
-			$order_id = $_GET['order_id'];
+		$order_id = $_GET['order_id'];
 		$order = wc_get_order( absint( $order_id ) );
 		$order_iiko_id = get_post_meta($order_id, 'iiko_id', true);
-		//Получаем терминал из склада
+		//Получаем терминал из склада заказа
 		$stock_id = get_post_meta( $order_id, 'stock_id', true );
-		$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
-		$organization_id = 'a2d17b3b-9395-48f7-ad0a-e4db339ab01a';// get_term_meta($stock_id, 'organization_code', true) ?: null;
-		echo '___'.$order_iiko_id .'__'. $organization_id.'_';
+		$organization_id =  get_term_meta($stock_id, 'organization_code', true) ?: null;
+
+
+		//echo '___'.$order_iiko_id .'__'. $organization_id.'_';
 		if($order_iiko_id && $organization_id){
-			echo 4444;
 				$export_api_requests = new Export_API_Requests();
 				$res = $export_api_requests->check_delivery($order_iiko_id, $organization_id);
 				print_r($res);

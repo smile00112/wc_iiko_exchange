@@ -204,6 +204,22 @@ class Settings extends WC_Settings_Page {
 					),
 
 					array(
+						'title'   => 'Передавать в айку применённые промокоды',
+						'desc'    => '',
+						'id'      => 'skyweb_wc_iiko_export_promos',
+						'type'    => 'checkbox',
+						'default' => 'no',
+					),
+					
+					array(
+						'title'   => 'iiko id свободной скидки(для передачи промокодов без iiko_id)',
+						'desc'    => '',
+						'id'      => 'skyweb_wc_iiko_free_discount_id',
+						'type'    => 'text',
+						'default' => '',
+					),
+					
+					array(
 						'title'   => 'id Категори для импорта модификаторов',
 						'desc'    => '',
 						'id'      => 'skyweb_wc_iiko_modifiers_category_id',
