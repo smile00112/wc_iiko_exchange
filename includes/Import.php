@@ -548,9 +548,17 @@ class Import {
 */
 
 				// Set variable product SKU.
+			try {
+
 				$product = wc_get_product( $post_id );
 				$product->set_sku( $product_iiko_sku );
 				$product->save();
+				
+			} catch (\Throwable $th) {
+				//throw $th;
+			}
+
+
 			}
 
 			// Insert/update product tags.
