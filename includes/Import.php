@@ -52,7 +52,7 @@ class Import {
 			$acf_template['supplements_'.$i.'_title'] = $modifier['title'];
 			$acf_template['_supplements_'.$i.'_title'] = $acf_template['supplements_data']['_title'];
 	
-			$acf_template['supplements_'.$i.'_type'] = $modifier['required'] == 1 ? 'radio' : 'checkbox';//$acf_template['supplements_data']['type'];
+			$acf_template['supplements_'.$i.'_type'] = $modifier['required'] == 1 ? 'radio' : 'chekbox';//$acf_template['supplements_data']['type'];
 			$acf_template['_supplements_'.$i.'_type'] = $acf_template['supplements_data']['_type'];
 
 			$acf_template['supplements_'.$i.'_show_title'] = $acf_template['supplements_data']['show_title'];

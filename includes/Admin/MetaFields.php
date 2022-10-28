@@ -24,6 +24,9 @@ class MetaFields {
 		add_filter( 'manage_edit-product_columns', array( $this, 'product_iiko_id_list_title' ) );
 		add_action( 'manage_product_posts_custom_column', array( $this, 'product_iiko_id_list_column' ), 10, 2 ); // Dynamic hook manage_{$post->post_type}_posts_custom_column
 		// add_filter( "manage_edit-product_sortable_columns", array( $this, 'product_iiko_id_list_col_sort' ) );
+
+		add_action( 'woocommerce_product_after_variable_attributes' , array( __CLASS__ , 'settings_for_variable_product' ) , 10 , 3 ) ;
+		add_action( 'woocommerce_save_product_variation' , array( __CLASS__ , 'settings_for_variable_product_save' ) , 10 , 2 ) ;
 	}
 
 	/**
@@ -223,6 +226,25 @@ class MetaFields {
 			);
 
 			return wp_parse_args( $custom, $columns );
+		}
+	}
+
+	//main product id to virtula variation  
+	public function settings_for_variable_product( $loop , $variation_data , $variations ) {
+		$parent_origin_product_id = get_post_meta( $variations->ID, 'parent_origin_product_id', true ) ?: 0;
+		//$BuyingPoints      = isset( $variation_data[ 'parent_origin_product_id' ][ 0 ] ) ? $variation_data[ 'parent_origin_product_id' ][ 0 ] : '' ;
+		woocommerce_wp_text_input(
+			array(
+				'id'    => 'parent_origin_product_id['.$loop.']' , 
+				'label' => 'id оригинала' ,
+				'value' => $parent_origin_product_id
+			)
+		) ;
+	}
+
+	public function settings_for_variable_product_save( $variation_id , $i ) {
+		if ( isset( $_POST[ 'parent_origin_product_id' ][$i] ) ){
+			update_post_meta( $variation_id , 'parent_origin_product_id' , stripslashes( $_POST[ 'parent_origin_product_id' ][$i] ) ) ;
 		}
 	}
 }
