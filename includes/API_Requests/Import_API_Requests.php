@@ -265,7 +265,7 @@ class Import_API_Requests extends Common_API_Requests {
 											$modifier_id = empty($updated_modifiers[$mod['id']] ) 
 												? $this->import_update_modifier($zero_price, $modifier_info, $term_id, $stock) 
 												: $updated_modifiers[$mod['id']];
-											
+											//	$modifier_id =  	$this->import_update_modifier($zero_price, $modifier_info, $term_id, $stock) ;
 
 											
 											//Заносим данные для мета поля основного товара
