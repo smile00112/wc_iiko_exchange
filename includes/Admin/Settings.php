@@ -188,6 +188,7 @@ class Settings extends WC_Settings_Page {
 					),
 
 					array(
+<<<<<<< HEAD
 						'title'   => 'Объединять пиццы по размеру',
 						'desc'    => '',
 						'id'      => 'skyweb_wc_iiko_make_virtual_pizza_by_size',
@@ -220,6 +221,8 @@ class Settings extends WC_Settings_Page {
 					),
 					
 					array(
+=======
+>>>>>>> parent of bafc99c (мелочь)
 						'title'   => 'id Категори для импорта модификаторов',
 						'desc'    => '',
 						'id'      => 'skyweb_wc_iiko_modifiers_category_id',
@@ -230,7 +233,7 @@ class Settings extends WC_Settings_Page {
 					array(
 						'title'   => 'id Категори для импорта виртуальных пицц',
 						'desc'    => '',
-						'id'      => 'skyweb_wc_iiko_virtual_product_category_id',
+						'id'      => 'skyweb_wc_iiko_modifiers_category_id',
 						'type'    => 'text',
 						'default' => '136',
 

@@ -227,7 +227,7 @@ class Delivery implements JsonSerializable {
 					'city' => $city_name,
 				);
 			}
-		if ( 'yes' === get_option( 'skyweb_wc_iiko_street_id_search_by_name' ) ) {
+
 			/* Ищем улицу в айке */
 			$street = [];
 			$city_name = str_replace(['рабочий посёлок ', 'коттеджный посёлок ', 'посёлок ', 'деревня ', 'село '], '', $city_name);
@@ -239,7 +239,7 @@ class Delivery implements JsonSerializable {
 
 			if(count($city_streets) == 1){
 				$street = $this->search_street($search_street . ' (' . $city_name.')', array_shift($city_streets));
-			
+//echo 1111;				
 			}elseif(count($city_streets) > 1){
 				//Если совпадение по нескольким городам
 				$search_city = array_reduce($city_streets, function($accumulator, $item) {
@@ -258,14 +258,15 @@ class Delivery implements JsonSerializable {
 				if( $search_city['p'] !== -1 ){
 					$street = $this->search_street($search_street, array_values($city_streets)[$search_city['p']]);
 				};
-
+//echo 2222;
 
 			}elseif(empty($city_streets)){
 				$all_streets =  $this->get_city_streets();
-
+//echo 3333;
 				$street = $this->search_street_similar($search_street . ' ' . $city_name, array_values($all_streets));
 			}
-
+// print_r($street);
+// exit;
 			if( !empty($street['iiko_street_id']) ){
 				$address['street'] = array(
 
@@ -276,7 +277,7 @@ class Delivery implements JsonSerializable {
 					'city' => $city_name,
 				);
 			}
-		}
+
 			// string [ 0 .. 10 ] characters Nullable
 			// Postcode.
 			$address['index'] = ! empty( $order->get_billing_postcode() ) ? $this->trim_string( wp_slash( $order->get_billing_postcode() ), 10 ) : null;
@@ -514,12 +515,8 @@ class Delivery implements JsonSerializable {
 
 			return null;
 		}
-		
-		//Получаем терминал из склада
-		$stock_id = get_post_meta( $order->get_id(), 'stock_id', true );
-		$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
-
-
+// print_r( $products );
+// exit;
 		foreach ( $products as $item_id =>$product_obj ) {
 
 			$size_iiko_id     = null;
@@ -569,11 +566,10 @@ class Delivery implements JsonSerializable {
 				continue;
 			}
 			
-
+		
 			/* Группы модификаторов товара*/
 			$product_groups_data = get_post_meta( $product_id, 'group_modifiers_data', true );
-			//сгруппированные по терминалам
-			$all_groups[$terminal_id][$item_id]= $product_groups_data;
+			$all_groups[$item_id]= $product_groups_data;
 
 
 			// Exclude products from export without iiko ID.
