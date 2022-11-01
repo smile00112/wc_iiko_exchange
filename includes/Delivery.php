@@ -544,6 +544,7 @@ class Delivery implements JsonSerializable {
 				$parent_origin_product_id = get_post_meta( $variation_id, 'parent_origin_product_id', true );
 				if(!empty($parent_origin_product_id)){
 					$product_id = $parent_origin_product_id;
+					$product_id_tmp = $product_id;
 					//echo '_parent_origin_product_id='.$product_id; modifiers_parent
 				}
 			}
@@ -572,9 +573,8 @@ class Delivery implements JsonSerializable {
  
 				continue;
 			}
-			
 
-			/* Группы модификаторов товара*/
+			/* Группы модификаторов товара (хранятся в товаре)*/
 			$product_groups_data = get_post_meta( $product_id, 'group_modifiers_data', true );
 			//сгруппированные по терминалам
 			$all_groups[$item_id]= $product_groups_data[$terminal_id];
