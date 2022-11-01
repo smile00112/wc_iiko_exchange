@@ -213,7 +213,6 @@ class Export {
 	   if ( 'failed' === $order->get_status() ) {
 		   Logs::add_wc_error_log( "Order $order_id has status 'failed'.", 'create-delivery' );
 	   }
-	   
 
 	   $iiko_order_id = trim($order->get_meta('iiko_id'));
 	   
@@ -248,8 +247,8 @@ class Export {
 		// exit;
 	   $order->add_order_note( 'Iiko order ID: ' . $delivery->get_id() );
 
-	//    $export_api_requests = new Export_API_Requests();
-	//    $created_delivery    = $export_api_requests->create_delivery( $delivery, $organization_id, $terminal_id );
+		$export_api_requests = new Export_API_Requests();
+		$created_delivery    = $export_api_requests->create_delivery( $delivery, $organization_id, $terminal_id );
 
 	   debug_to_file('iiko create-delivery-request__order_id='.$order_id);
 	   debug_to_file( print_R($created_delivery, true) );		
@@ -394,7 +393,7 @@ class Export {
 			$delivery      = new Delivery( $order_id, $iiko_order_id );
 			echo ' $delivery=';
 print_R( $delivery);
-//exit;
+exit;
 			//   $order->add_order_note( 'Iiko order ID: ' . $delivery->get_id() );
 	
 		   $export_api_requests = new Export_API_Requests();

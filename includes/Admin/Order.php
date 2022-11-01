@@ -136,6 +136,7 @@ class Order {
 				<textarea id="check_request_body" placeholder="тело запроса">'.(!empty($iiko_order_check_results['request_body']) ? json_encode($iiko_order_check_results['request_body'], true) : "").'</textarea>
 				<p>Ответ</p>
 				<textarea id="check_responce_body" placeholder="тело ответа" style="height: 122px;">'.(!empty($iiko_order_check_results['responce_body']) ? json_encode($iiko_order_check_results['responce_body'], true) : "").'</textarea>
+				</div>
 			</div>
 		<style>
 			#couriers_box .inside{

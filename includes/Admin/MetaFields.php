@@ -229,13 +229,13 @@ class MetaFields {
 		}
 	}
 
-	//main product id to virtula variation
+	//main product id to virtula variation  
 	public function settings_for_variable_product( $loop , $variation_data , $variations ) {
 		$parent_origin_product_id = get_post_meta( $variations->ID, 'parent_origin_product_id', true ) ?: 0;
 		//$BuyingPoints      = isset( $variation_data[ 'parent_origin_product_id' ][ 0 ] ) ? $variation_data[ 'parent_origin_product_id' ][ 0 ] : '' ;
 		woocommerce_wp_text_input(
 			array(
-				'id'    => 'parent_origin_product_id' ,
+				'id'    => 'parent_origin_product_id['.$loop.']' , 
 				'label' => 'id оригинала' ,
 				'value' => $parent_origin_product_id
 			)
@@ -243,12 +243,8 @@ class MetaFields {
 	}
 
 	public function settings_for_variable_product_save( $variation_id , $i ) {
-		if ( isset( $_POST[ 'parent_origin_product_id' ] ) ){
-			// if($_POST[ 'parent_origin_product_id' ] == ''){
-			// 	update_post_meta( $variation_id , 'parent_origin_product_id' , stripslashes( $_POST[ 'parent_origin_product_id' ] ) ) ;
-			// }else
-			// if(empty(get_post_meta( $variation_id , 'parent_origin_product_id', true)))
-				update_post_meta( $variation_id , 'parent_origin_product_id' , stripslashes( $_POST[ 'parent_origin_product_id' ] ) ) ;
+		if ( isset( $_POST[ 'parent_origin_product_id' ][$i] ) ){
+			update_post_meta( $variation_id , 'parent_origin_product_id' , stripslashes( $_POST[ 'parent_origin_product_id' ][$i] ) ) ;
 		}
 	}
 }
