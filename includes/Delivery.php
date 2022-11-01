@@ -102,7 +102,7 @@ class Delivery implements JsonSerializable {
 		// Order items.
 		$this->items = $this->order_items( $order );
 
-		$this->discountsInfo = ( 'yes' === get_option( 'skyweb_wc_iiko_street_id_search_by_name' ) ) ? $this->order_coupons( $order ) : null;
+		$this->discountsInfo = $this->order_coupons( $order );
 		
 		// Array of
 		// iikoTransport.PublicApi.Contracts.Deliveries.Request.CreateOrder.CashPayment
@@ -227,7 +227,7 @@ class Delivery implements JsonSerializable {
 					'city' => $city_name,
 				);
 			}
-		if ( 'yes' === get_option( 'skyweb_wc_iiko_street_id_search_by_name' ) ) {
+
 			/* Ищем улицу в айке */
 			$street = [];
 			$city_name = str_replace(['рабочий посёлок ', 'коттеджный посёлок ', 'посёлок ', 'деревня ', 'село '], '', $city_name);
@@ -239,7 +239,7 @@ class Delivery implements JsonSerializable {
 
 			if(count($city_streets) == 1){
 				$street = $this->search_street($search_street . ' (' . $city_name.')', array_shift($city_streets));
-			
+//echo 1111;				
 			}elseif(count($city_streets) > 1){
 				//Если совпадение по нескольким городам
 				$search_city = array_reduce($city_streets, function($accumulator, $item) {
@@ -258,14 +258,15 @@ class Delivery implements JsonSerializable {
 				if( $search_city['p'] !== -1 ){
 					$street = $this->search_street($search_street, array_values($city_streets)[$search_city['p']]);
 				};
-
+//echo 2222;
 
 			}elseif(empty($city_streets)){
 				$all_streets =  $this->get_city_streets();
-
+//echo 3333;
 				$street = $this->search_street_similar($search_street . ' ' . $city_name, array_values($all_streets));
 			}
-
+// print_r($street);
+// exit;
 			if( !empty($street['iiko_street_id']) ){
 				$address['street'] = array(
 
@@ -276,8 +277,6 @@ class Delivery implements JsonSerializable {
 					'city' => $city_name,
 				);
 			}
-
-		}
 
 			// string [ 0 .. 10 ] characters Nullable
 			// Postcode.
@@ -453,7 +452,7 @@ class Delivery implements JsonSerializable {
 	protected function order_coupons( $order ){
 		$coupons = $discounts = [];
 		$products = $order->get_items('coupon');
-		$free_discount_id = get_option( 'skyweb_wc_iiko_street_id_search_by_name' ); //свободная скидка iiko id
+		$free_discount_id = 'dca51988-bae8-4b10-a8f9-fd11fe6aae50'; //свободная скидка iiko id
 
 		foreach ( $products as $item_id =>$product_obj ) {
 			// Retrieving the coupon ID reference
@@ -489,8 +488,6 @@ class Delivery implements JsonSerializable {
 		if(empty($coupons)) return null;
 
 		foreach($coupons as $coupon){
-			if(empty($coupon['discount_iiko_id']) && empty($free_discount_id)) continue;
-
 			$discounts[]=[
 				'discountTypeId' => $coupon['discount_iiko_id'] ? : $free_discount_id,
 				'sum' => $coupon['discount'],
@@ -518,12 +515,8 @@ class Delivery implements JsonSerializable {
 
 			return null;
 		}
-		
-		//Получаем терминал из склада
-		$stock_id = get_post_meta( $order->get_id(), 'stock_id', true );
-		$terminal_id =  get_term_meta($stock_id, 'code_for_1c', true);
-
-
+// print_r( $products );
+// exit;
 		foreach ( $products as $item_id =>$product_obj ) {
 
 			$size_iiko_id     = null;
@@ -574,11 +567,10 @@ class Delivery implements JsonSerializable {
 				continue;
 			}
 
+
 			/* Группы модификаторов товара (хранятся в товаре)*/
 			$product_groups_data = get_post_meta( $product_id, 'group_modifiers_data', true );
-			//сгруппированные по терминалам
-			$all_groups[$item_id]= $product_groups_data[$terminal_id];
-
+			$all_groups[$item_id]= $product_groups_data;
 
 
 			// Exclude products from export without iiko ID.
@@ -675,31 +667,31 @@ class Delivery implements JsonSerializable {
 			$i ++;
 		}
 
-		/* Если есть платная доставка, добавляем к заказу товар "доставка" ТОКИО*/
-		// if($order->get_shipping_total()){
-		// 	$order_items[0] = [
-		// 		'productId'        => 'dc38bfde-ba59-4cf4-847c-3988aee2a05c', // Already sanitized
-		// 		'modifiers'        => null,
-		// 		'price'            => null,
-		// 		'positionId'       => null,
-		// 		'type'             => 'Product',
-		// 		'amount'           => 1,
-		// 		'productSizeId'    => null, // Already sanitized
-		// 		'comboInformation' => null,
-		// 		'comment'          => null,
-		// 	];
-		// }
-
-
+		/* Если есть платная доставка, добавляем к заказу товар "доставка" */
+		if($order->get_shipping_total()){
+			$order_items[0] = [
+				'productId'        => 'dc38bfde-ba59-4cf4-847c-3988aee2a05c', // Already sanitized
+				'modifiers'        => null,
+				'price'            => null,
+				'positionId'       => null,
+				'type'             => 'Product',
+				'amount'           => 1,
+				'productSizeId'    => null, // Already sanitized
+				'comboInformation' => null,
+				'comment'          => null,
+			];
+		}
 		// print_r($ids_map);
  		// print_r($all_dops);
  		// print_r($all_groups);
 		// exit;
-
 		//совмещаем товары и модификаторы
 		foreach($order_items as $prod_id=>$order_item){
 			if(!empty($all_dops[$prod_id])){
+				//echo $prod_id.'||';
 				$groups = $all_groups[$prod_id];
+				// echo $prod_id;
+				// print_R($groups);
 
 				//назначаем модификаторам группы, берём из товара
 				foreach ($all_dops[$prod_id] as $dop_product_id=>$dop){
